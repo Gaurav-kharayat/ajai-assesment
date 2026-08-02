@@ -1,0 +1,43 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String     @id @default(cuid())
+  name      String
+  email     String     @unique
+  documents Document[] @relation("OwnedDocuments")
+  shares    DocumentShare[]
+  createdAt DateTime   @default(now())
+}
+
+model Document {
+  id        String   @id @default(cuid())
+  title     String
+  content   String   @default("<p></p>") // TipTap/ProseMirror HTML
+  ownerId   String
+  owner     User     @relation("OwnedDocuments", fields: [ownerId], references: [id])
+  shares    DocumentShare[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Join table: which users a document has been shared with, and at what
+// permission level. Kept deliberately simple (view | edit) rather than a
+// full ACL system - see ARCHITECTURE.md for the reasoning.
+model DocumentShare {
+  id         String   @id @default(cuid())
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  permission String   @default("edit") // "view" | "edit"
+  createdAt  DateTime @default(now())
+
+  @@unique([documentId, userId])
+}
